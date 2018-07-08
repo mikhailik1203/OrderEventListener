@@ -84,13 +84,11 @@ void EventListener::OnRequestAcknowledged(
     if(OrderStatus::PENDING != it->second.status_)
         return;
 
-    OrderStatus prevStatus = it->second.status_;
     it->second.status_ = OrderStatus::NEW;
 
     if(INVALID_REQID != it->second.baseReqId_)
         replaceBaseRequests(it->second.baseReqId_);
 
-    QuantityT deltaQty = it->second.deltaQuantity_;
     proc_.onOrderAccepted(id, it->second);
 }
 
@@ -132,15 +130,11 @@ void EventListener::OnOrderFilled(
     if(requests_.end() == it)
         return;
 
-    QuantityT prevQty = it->second.quantity_;
-    OrderStatus prevStatus = it->second.status_;
-
     proc_.onOrderFilled(id, it->second, quantityFilled);
 
     it->second.quantity_ -= quantityFilled;
-    if(OrderStatus::REPLACED != prevStatus) {
+    if(OrderStatus::REPLACED != it->second.status_)
         it->second.status_ = OrderStatus::NEW;
-    }
 
     if(INVALID_REQID != it->second.childReqId_)
         updateChildRequest(it->second.childReqId_, quantityFilled);

@@ -15,7 +15,7 @@
 namespace ordproc{
 
 /**
- * EventListener contains logic of the Order's event processing and updates statistic's parameters.
+ * EventListener contains logic of the Order's event processing.
  *      Encapsulates state of the orders.
  *
     State machine for EventListener
