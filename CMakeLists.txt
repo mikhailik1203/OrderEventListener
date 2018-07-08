@@ -12,4 +12,4 @@ LINK_DIRECTORIES(
 
 
 add_executable(OrderEventListener
-        main.cpp Listener.h OrderEventListenerDef.h EventListener.cpp EventListener.h test/testEventListener.cpp InstrumentStatistics.cpp InstrumentStatistics.h)
+        main.cpp Listener.h OrderEventListenerDef.h EventListener.cpp EventListener.h test/testEventListener.cpp InstrumentStatistics.cpp InstrumentStatistics.h StatisticsProcessor.cpp StatisticsProcessor.h)

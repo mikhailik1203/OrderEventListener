@@ -5,6 +5,7 @@
 #include "Listener.h"
 #include "OrderEventListenerDef.h"
 #include "InstrumentStatistics.h"
+#include "StatisticsProcessor.h"
 
 #include <unordered_map>
 #include <map>
@@ -33,7 +34,7 @@ namespace ordproc{
  */
     class EventListener: public Listener{
     public:
-        explicit EventListener(InstrumentStatistics &stat);
+        explicit EventListener(StatisticsProcessor &proc);
         virtual ~EventListener(){}
 
     public:
@@ -67,7 +68,7 @@ namespace ordproc{
 
     private:
         RequestsT requests_;
-        InstrumentStatistics &stat_;
+        StatisticsProcessor &proc_;
     };
 
 

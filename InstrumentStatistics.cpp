@@ -14,37 +14,89 @@ namespace{
     }
 }
 
-InstrumentStatistics::InstrumentStatistics():
-    nfq_(0), cov_{0.0, 0.0}, pov_()
+NFQStatistics::NFQStatistics(): nfq_(0)
 {
-
 }
 
-InstrumentStatistics::~InstrumentStatistics()
+NFQStatistics::~NFQStatistics()
 {
-
 }
 
-void InstrumentStatistics::reset()
+void NFQStatistics::reset()
 {
     nfq_ = 0;
+}
+
+void NFQStatistics::addNFQ(Side side, QuantityT qty)
+{
+    nfq_ += (Side::BID == side)?(qty):(-qty);
+}
+
+QuantityT NFQStatistics::getNFQ()const
+{
+    return nfq_;
+}
+
+COVStatistics::COVStatistics(): cov_{0.0, 0.0}
+{
+}
+
+COVStatistics::~COVStatistics()
+{
+}
+
+void COVStatistics::reset()
+{
     cov_ = {0.0, 0.0};
+}
+
+void COVStatistics::addCOV(Side side, VolumeT volume)
+{
+    auto func = [&volume](auto &cont){
+        cont += volume;
+    };
+    func(cov_[sideToIndex(side)]);
+}
+
+void COVStatistics::removeCOV(Side side, VolumeT volume)
+{
+    auto func = [&volume](auto &cont){
+        cont -= volume;
+    };
+    func(cov_[sideToIndex(side)]);
+}
+
+VolumeT COVStatistics::getCOV(Side side)const
+{
+    return cov_[sideToIndex(side)];
+}
+
+
+POVStatistics::POVStatistics():pov_()
+{
+}
+
+POVStatistics::~POVStatistics()
+{
+}
+
+void POVStatistics::reset()
+{
     pov_ = {};
 }
 
-
-void InstrumentStatistics::addPOV(RequestIdT id, Side side, const OrderParamsT &params)
+void POVStatistics::addPOV(RequestIdT id, Side side, const OrderParamsT &params)
 {
     auto func = [](auto &cont, VolumeT volume, QuantityT qty){
         cont[volume] += qty;
     };
     func(pov_[sideToIndex(side)]
-             [statusToIndex(std::get<OrderStatus>(params))],
+         [statusToIndex(std::get<OrderStatus>(params))],
          std::get<VolumeT>(params),
          std::get<QuantityT>(params));
 }
 
-void InstrumentStatistics::removePOV(RequestIdT id, Side side, const OrderParamsT &params)
+void POVStatistics::removePOV(RequestIdT id, Side side, const OrderParamsT &params)
 {
     auto func = [](auto &cont, VolumeT volume, QuantityT qty)
     {
@@ -56,12 +108,12 @@ void InstrumentStatistics::removePOV(RequestIdT id, Side side, const OrderParams
         }
     };
     func(pov_[sideToIndex(side)]
-             [statusToIndex(std::get<OrderStatus>(params))],
+         [statusToIndex(std::get<OrderStatus>(params))],
          std::get<VolumeT>(params),
          std::get<QuantityT>(params));
 }
 
-void InstrumentStatistics::changePOV(RequestIdT id, Side side,
+void POVStatistics::changePOV(RequestIdT id, Side side,
                                      const OrderParamsT &prevParams,
                                      const OrderParamsT &newParams)
 {
@@ -90,7 +142,7 @@ void InstrumentStatistics::changePOV(RequestIdT id, Side side,
          std::get<QuantityT>(newParams));
 }
 
-MinMaxVolumeT InstrumentStatistics::getPOV(Side side)const
+MinMaxVolumeT POVStatistics::getPOV(Side side)const
 {
     auto func = [](auto &contPending, auto &contAccepted)->MinMaxVolumeT
     {
@@ -109,34 +161,4 @@ MinMaxVolumeT InstrumentStatistics::getPOV(Side side)const
                 pov_[sideToIndex(side)][statusToIndex(OrderStatus::NEW)]);
 }
 
-void InstrumentStatistics::addCOV(Side side, VolumeT volume)
-{
-    auto func = [&volume](auto &cont){
-        cont += volume;
-    };
-    func(cov_[sideToIndex(side)]);
-}
-
-void InstrumentStatistics::removeCOV(Side side, VolumeT volume)
-{
-    auto func = [&volume](auto &cont){
-        cont -= volume;
-    };
-    func(cov_[sideToIndex(side)]);
-}
-
-VolumeT InstrumentStatistics::getCOV(Side side)const
-{
-    return cov_[sideToIndex(side)];
-}
-
-void InstrumentStatistics::addNFQ(Side side, QuantityT qty)
-{
-    nfq_ += (Side::BID == side)?(qty):(-qty);
-}
-
-QuantityT InstrumentStatistics::getNFQ()const
-{
-    return nfq_;
-}
 

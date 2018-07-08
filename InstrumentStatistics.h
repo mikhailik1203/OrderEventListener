@@ -9,12 +9,42 @@
 namespace ordproc{
 
     /**
-     * InstrumentStatistics is the storage for statistic's parameters NFQ, COV and POV
+     * *Statistics classes encapsulate storage for statistic's parameters NFQ, COV and POV
      */
-    class InstrumentStatistics {
+    class NFQStatistics {
     public:
-        InstrumentStatistics();
-        ~InstrumentStatistics();
+        NFQStatistics();
+        ~NFQStatistics();
+
+        void reset();
+
+        QuantityT getNFQ()const;
+        void addNFQ(Side side, QuantityT qty);
+
+    private:
+        QuantityT nfq_;
+    };
+
+
+    class COVStatistics {
+    public:
+        COVStatistics();
+        ~COVStatistics();
+
+        void reset();
+
+        VolumeT getCOV(Side side)const;
+        void addCOV(Side side, VolumeT volume);
+        void removeCOV(Side side, VolumeT volume);
+
+    private:
+        std::array<VolumeT, SIDE_COUNT> cov_;
+    };
+
+    class POVStatistics {
+    public:
+        POVStatistics();
+        ~POVStatistics();
 
         void reset();
 
@@ -24,20 +54,9 @@ namespace ordproc{
         void changePOV(RequestIdT id, Side side,
                        const OrderParamsT &prevParams,
                        const OrderParamsT &newParams);
-
-        VolumeT getCOV(Side side)const;
-        void addCOV(Side side, VolumeT volume);
-        void removeCOV(Side side, VolumeT volume);
-
-        QuantityT getNFQ()const;
-        void addNFQ(Side side, QuantityT qty);
-
     private:
         typedef std::map<VolumeT, QuantityT> POVT;
         std::array<std::array<POVT, SIDE_COUNT>, STATUS_COUNT> pov_;
-
-        std::array<VolumeT, SIDE_COUNT> cov_;
-        QuantityT nfq_;
     };
 
 }

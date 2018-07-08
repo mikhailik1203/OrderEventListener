@@ -7,7 +7,8 @@ namespace {
     const size_t REQUEST_AMOUNT = 1000;
 }
 
-EventListener::EventListener(InstrumentStatistics &stat):stat_(stat)
+EventListener::EventListener(StatisticsProcessor &proc):
+        proc_(proc)
 {
     requests_.reserve(REQUEST_AMOUNT);
 }
@@ -30,7 +31,7 @@ void EventListener::OnInsertOrderRequest(
                      INVALID_REQID,
                      OrderStatus::PENDING,
                      static_cast<Side>(side)};
-    stat_.addPOV(id, static_cast<Side>(side), {OrderStatus::PENDING, price*quantity, quantity});
+    proc_.onNewOrder(id, static_cast<Side>(side), {OrderStatus::PENDING, price*quantity, quantity});
 }
 
 void EventListener::OnReplaceOrderRequest(
@@ -55,7 +56,7 @@ void EventListener::OnReplaceOrderRequest(
                         oldId,
                         OrderStatus::PENDING,
                         it->second.side_};
-    stat_.addPOV(newId, it->second.side_, {OrderStatus::PENDING, it->second.price_*newQty, newQty});
+    proc_.onNewOrder(newId, it->second.side_, {OrderStatus::PENDING, it->second.price_*newQty, newQty});
     it->second.childReqId_ = newId;
 }
 
@@ -64,9 +65,9 @@ void EventListener::replaceBaseRequests(
 {
     auto it = requests_.find(id);
     if(requests_.end() != it){
-        stat_.removePOV(id, it->second.side_, {it->second.status_, it->second.price_*it->second.quantity_, it->second.quantity_});
-        it->second.status_ = OrderStatus::REPLACED;
+        proc_.onReplacedOrder(id, it->second);
 
+        it->second.status_ = OrderStatus::REPLACED;
         if(INVALID_REQID != it->second.baseReqId_)
             replaceBaseRequests(it->second.baseReqId_);
     }
@@ -90,11 +91,7 @@ void EventListener::OnRequestAcknowledged(
         replaceBaseRequests(it->second.baseReqId_);
 
     QuantityT deltaQty = it->second.deltaQuantity_;
-    stat_.addCOV(it->second.side_, it->second.price_*deltaQty);
-    stat_.changePOV(id,
-                    it->second.side_,
-                    {prevStatus, it->second.price_*it->second.quantity_, it->second.quantity_},
-                    {it->second.status_, it->second.price_*it->second.quantity_, it->second.quantity_});
+    proc_.onOrderAccepted(id, it->second);
 }
 
 void EventListener::OnRequestRejected(
@@ -107,9 +104,7 @@ void EventListener::OnRequestRejected(
     if(OrderStatus::PENDING != it->second.status_)
         return;
 
-    stat_.removePOV(id,
-                    it->second.side_,
-                    {it->second.status_, it->second.price_*it->second.quantity_, it->second.quantity_});
+    proc_.onOrderRejected(id, it->second);
     requests_.erase(it);
 }
 
@@ -119,16 +114,8 @@ void EventListener::updateChildRequest(RequestIdT id, QuantityT quantityFilled)
     if(requests_.end() == it)
         return;
 
-    QuantityT prevQty = it->second.quantity_;
+    proc_.updateOnBaseOrderFilled(id, it->second, quantityFilled);
     it->second.quantity_ -= quantityFilled;
-
-    if(OrderStatus::PENDING != it->second.status_)
-        stat_.removeCOV(it->second.side_, it->second.price_*quantityFilled);
-
-    stat_.changePOV(id,
-                    it->second.side_,
-                    {it->second.status_, it->second.price_*prevQty, prevQty},
-                    {it->second.status_, it->second.price_*it->second.quantity_, it->second.quantity_});
 
     if(INVALID_REQID != it->second.childReqId_)
         updateChildRequest(it->second.childReqId_, quantityFilled);
@@ -147,23 +134,14 @@ void EventListener::OnOrderFilled(
 
     QuantityT prevQty = it->second.quantity_;
     OrderStatus prevStatus = it->second.status_;
+
+    proc_.onOrderFilled(id, it->second, quantityFilled);
+
     it->second.quantity_ -= quantityFilled;
-
-    stat_.addNFQ(it->second.side_, quantityFilled);
-
-    if(OrderStatus::REPLACED != prevStatus){
+    if(OrderStatus::REPLACED != prevStatus) {
         it->second.status_ = OrderStatus::NEW;
-
-        /// add COV, if order was filled without OnRequestAcknowledged() call
-        if(OrderStatus::PENDING == prevStatus)
-            stat_.addCOV(it->second.side_, it->second.price_*prevQty);
-        stat_.removeCOV(it->second.side_, it->second.price_*quantityFilled);
-
-        stat_.changePOV(id,
-                        it->second.side_,
-                        {prevStatus, it->second.price_*prevQty, prevQty},
-                        {it->second.status_, it->second.price_*it->second.quantity_, it->second.quantity_});
     }
+
     if(INVALID_REQID != it->second.childReqId_)
         updateChildRequest(it->second.childReqId_, quantityFilled);
 
